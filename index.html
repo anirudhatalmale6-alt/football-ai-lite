@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>AI2ORBIT — Football Lite</title>
+<style>
+:root{
+--ink:#1a1a1a;--paper:#fafaf8;--line:#c8d4c0;--pitch:#e8efe4;--pitch2:#f0f5ec;
+--green:#3a7d44;--green2:#5a9a62;--blue:#3366cc;--orange:#cc6633;--ball:#222;
+--dim:#999;--border:#e0e0dc;--accent:#2d6a34;--mono:Courier,monospace;
+--sans:"Palatino Linotype","Book Antiqua",Palatino,"Times New Roman",serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);
+font-size:14px;line-height:1.5;max-width:720px;margin:0 auto;padding:8px 12px}
+
+.masthead{display:flex;align-items:baseline;justify-content:space-between;
+border-bottom:2px solid var(--ink);padding:6px 0 4px;margin-bottom:8px}
+.masthead h1{font-size:13px;letter-spacing:3px;font-weight:400;color:var(--accent)}
+.masthead .ed{font-family:var(--mono);font-size:9px;color:var(--dim)}
+
+.rule{border:none;border-top:1px solid var(--border);margin:8px 0}
+.rule.thick{border-top:2px solid var(--ink)}
+
+.score-row{display:flex;align-items:center;justify-content:center;gap:0;
+margin:6px 0 4px;user-select:none}
+.score-row .team{font-size:15px;letter-spacing:2px;font-weight:700;
+min-width:100px;text-align:center}
+.score-row .team.home{color:var(--blue);text-align:right;padding-right:10px}
+.score-row .team.away{color:var(--orange);text-align:left;padding-left:10px}
+.score-row .num{font-family:var(--mono);font-size:32px;font-weight:700;
+min-width:32px;text-align:center;line-height:1}
+.score-row .sep{font-size:20px;color:var(--dim);padding:0 4px;line-height:1}
+.score-row .clock{font-family:var(--mono);font-size:11px;color:var(--green);
+background:var(--pitch);padding:2px 8px;border-radius:2px;margin-left:14px;
+min-width:50px;text-align:center}
+
+.tabs{display:flex;gap:2px;margin:6px 0;flex-wrap:wrap}
+.tab{font-family:var(--mono);font-size:10px;padding:3px 8px;
+border:1px solid var(--border);background:var(--paper);color:var(--dim);
+cursor:pointer;letter-spacing:0.5px;transition:border-color .15s,color .15s}
+.tab:hover{border-color:var(--green);color:var(--ink)}
+.tab.on{border-color:var(--accent);color:var(--accent);background:var(--pitch2)}
+
+.field-wrap{position:relative;width:100%;aspect-ratio:1.54;
+background:var(--pitch);border:1px solid var(--line);margin:6px 0;overflow:hidden}
+
+svg.pitch-svg{position:absolute;top:0;left:0;width:100%;height:100%}
+.pitch-svg line,.pitch-svg rect,.pitch-svg circle,.pitch-svg ellipse{
+stroke:var(--line);fill:none;stroke-width:0.4}
+.pitch-svg .center-dot{fill:var(--line);stroke:none}
+
+.dot{position:absolute;border-radius:50%;transition:left .4s linear,top .4s linear}
+.dot.home{width:8px;height:8px;background:var(--blue);opacity:.75}
+.dot.away{width:8px;height:8px;background:var(--orange);opacity:.75}
+.dot.ball{width:6px;height:6px;background:var(--ball);box-shadow:0 0 0 1px rgba(0,0,0,.15);
+z-index:10;transition:left .25s linear,top .25s linear}
+.dot.ball.air{box-shadow:0 1px 4px rgba(0,0,0,.3)}
+
+.meta{display:flex;gap:12px;flex-wrap:wrap;margin:4px 0}
+.meta-item{font-family:var(--mono);font-size:10px;color:var(--dim)}
+.meta-item b{color:var(--ink);font-weight:400}
+
+.view-tabs{display:flex;gap:2px;margin:4px 0}
+.vtab{font-family:var(--mono);font-size:9px;padding:2px 6px;
+border:1px solid var(--border);background:var(--paper);color:var(--dim);
+cursor:pointer;letter-spacing:0.3px}
+.vtab:hover{color:var(--ink);border-color:var(--green)}
+.vtab.on{color:var(--accent);border-color:var(--accent)}
+
+.event-log{font-family:var(--mono);font-size:10px;color:var(--dim);
+max-height:60px;overflow-y:auto;margin:4px 0;line-height:1.6}
+.event-log .ev{color:var(--ink)}
+.event-log .goal{color:var(--accent);font-weight:700}
+
+.footer{font-family:var(--mono);font-size:9px;color:var(--dim);
+text-align:center;margin:10px 0 4px;letter-spacing:1px}
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <h1>AI2ORBIT</h1>
+  <span class="ed">FOOTBALL AI — LITE</span>
+</div>
+
+<div class="tabs" id="contTabs"></div>
+<div class="tabs" id="matchTabs"></div>
+<hr class="rule">
+
+<div class="score-row">
+  <span class="team home" id="tHome">—</span>
+  <span class="num" id="sHome">0</span>
+  <span class="sep">:</span>
+  <span class="num" id="sAway">0</span>
+  <span class="team away" id="tAway">—</span>
+  <span class="clock" id="clock">00:00</span>
+</div>
+
+<div class="view-tabs" id="viewTabs"></div>
+
+<div class="field-wrap" id="field">
+  <svg class="pitch-svg" viewBox="0 0 154 100" preserveAspectRatio="none">
+    <!-- outline -->
+    <rect x="1" y="1" width="152" height="98" />
+    <!-- halfway -->
+    <line x1="77" y1="1" x2="77" y2="99" />
+    <!-- center circle -->
+    <circle cx="77" cy="50" r="13.4" />
+    <circle cx="77" cy="50" r="0.6" class="center-dot" />
+    <!-- penalty areas -->
+    <rect x="1" y="21" width="24" height="58" />
+    <rect x="129" y="21" width="24" height="58" />
+    <!-- goal areas -->
+    <rect x="1" y="33" width="8" height="34" />
+    <rect x="145" y="33" width="8" height="34" />
+    <!-- penalty spots -->
+    <circle cx="17.5" cy="50" r="0.5" class="center-dot" />
+    <circle cx="136.5" cy="50" r="0.5" class="center-dot" />
+    <!-- penalty arcs -->
+    <path d="M 25,38 A 13.4,13.4 0 0,1 25,62" fill="none" stroke="var(--line)" stroke-width="0.4"/>
+    <path d="M 129,38 A 13.4,13.4 0 0,0 129,62" fill="none" stroke="var(--line)" stroke-width="0.4"/>
+    <!-- corner arcs -->
+    <path d="M 1,4 A 3,3 0 0,1 4,1" fill="none" stroke="var(--line)" stroke-width="0.4"/>
+    <path d="M 150,1 A 3,3 0 0,1 153,4" fill="none" stroke="var(--line)" stroke-width="0.4"/>
+    <path d="M 4,99 A 3,3 0 0,1 1,96" fill="none" stroke="var(--line)" stroke-width="0.4"/>
+    <path d="M 153,96 A 3,3 0 0,1 150,99" fill="none" stroke="var(--line)" stroke-width="0.4"/>
+    <!-- goals -->
+    <rect x="-1" y="42" width="2" height="16" stroke="var(--green2)" stroke-width="0.6"/>
+    <rect x="153" y="42" width="2" height="16" stroke="var(--green2)" stroke-width="0.6"/>
+  </svg>
+</div>
+
+<div class="meta" id="meta">
+  <span class="meta-item">MOVE: <b id="mMove">—</b></span>
+  <span class="meta-item">F: <b id="mForce">—</b></span>
+  <span class="meta-item">DIR: <b id="mDir">—</b></span>
+  <span class="meta-item">DIST: <b id="mDist">0</b>m</span>
+  <span class="meta-item">TICK: <b id="mTick">0</b></span>
+</div>
+
+<hr class="rule">
+<div class="event-log" id="log"></div>
+
+<div class="footer">AI2ORBIT CO. — FOOTBALL AI ENGINE — 43+1 MOVEMENTS</div>
+
+<script>
+var MN=['FWD-C','FWD-L','FWD-R','L-WING','R-WING','BACK','BK-L','BK-R','LONG',
+'X-LEFT','X-RIGHT','THRU','LOB','CHIP','GROUND','1-2','DRB-F','DRB-L','DRB-R',
+'SHT-LO','SHT-HI','SHT-L','SHT-R','HEAD','VOLLEY','FK','PEN','THROW','GK-S',
+'GK-L','CRN-S','CRN-L','CLR','TACKLE','INT','DEFL','SV-LO','SV-HI','PUNCH',
+'DISTR','SLIDE','FLICK','BHEEL','UNI'];
+
+var CONT=[
+{n:'EUROPE',m:[{h:'FIN',a:'SWE'},{h:'ESP',a:'GER'},{h:'ENG',a:'FRA'},{h:'ITA',a:'POR'}]},
+{n:'AFRICA',m:[{h:'NGA',a:'GHA'},{h:'EGY',a:'CMR'},{h:'SEN',a:'MAR'}]},
+{n:'ASIA',m:[{h:'JPN',a:'KOR'},{h:'SAU',a:'IRN'},{h:'AUS',a:'QAT'}]},
+{n:'AMERICAS',m:[{h:'BRA',a:'ARG'},{h:'USA',a:'MEX'},{h:'COL',a:'CHI'}]},
+{n:'OCEANIA',m:[{h:'NZL',a:'FIJ'},{h:'TAH',a:'PNG'}]}
+];
+
+var VIEWS=[{n:'FULL',x:0,y:0,w:1,h:1},{n:'LEFT',x:0,y:0,w:.52,h:1},
+{n:'RIGHT',x:.48,y:0,w:.52,h:1},{n:'WIDE',x:0,y:.15,w:1,h:.7}];
+
+var G={run:false,tick:0,min:0,hg:0,ag:0,bx:.5,bz:.5,by:0,mid:0,
+force:0,dir:'—',dist:0,hn:'—',an:'—',ci:0,mi:0,vi:0,half:false,
+hp:[],ap:[]};
+
+var fieldEl,dots=[],ballDot;
+
+function H(x,d){var v=x;for(var i=0;i<d;i++){v=Math.sin(v*1.5+i*.7+x*.01)*Math.cos(v*.618);v=Math.abs(v)*.3+.25}return v}
+
+function cF(m,b,f){var base=.0023*.0006998*Math.pow(.03,1.001234);
+var fl=1/43;var mf=m<43?(1+m*fl*.5):1;var pr=f>0?(1+b)/(1+f):(1+b);
+var fm=b>f?.0044:.0004;var mm=b>3?1.05:1.044;
+return base*mf*pr*(1+fm)*mm}
+
+function sM(bx,bz,p,b,f,a){var sh=H(bx*100+bz*50+b*3+f*2+a*10,6);
+var af=a>2?.3:0;
+if(bx>.8){var st=19+Math.floor(sh*20)%6;return sh>.35+af?st:Math.floor(sh*43)}
+if(bx<.2)return sh>.3?32+Math.floor(sh*8)%8:5;
+if(bz<.1||bz>.9)return bz<.1?9:10;
+var mt=Math.floor(sh*43)%18;if(b/(b+f+1)>.5&&sh>.35)mt=11;return mt}
+
+function gB(m){var x=0,z=0;
+if(m<=4||m==8||m==11||m==16)x=1;
+else if(m>=19&&m<=24)x=1.5;
+else if(m>=5&&m<=7)x=-.5;
+else if(m>=32&&m<=39)x=-.8;
+else x=.3;
+if(m==3||m==9||m==17)z=-.5;
+else if(m==4||m==10||m==18)z=.5;
+return{x:x,z:z}}
+
+function tick(){
+if(!G.run)return;G.tick++;G.min=90*G.tick/180;
+if(G.min>90){G.run=false;addLog('FULL TIME','ev');return}
+if(G.min>=45&&!G.half){G.half=true;addLog('— HALF TIME —','ev')}
+
+var t=G.tick,m=Math.floor(Math.random()*100);
+var ph=H(m+t*1.3,5);G.possession=ph>.45?0:1;
+var fm=[1,6,7,8],fi=Math.floor(H(t*.1+m*.5,4)*16)%4;
+var behind=fm[fi],front=10-behind;
+
+var mid=sM(G.bx,G.bz,G.possession,behind,front,0);G.mid=mid;
+var force=cF(mid,behind,front);
+var kt=Math.floor(H(t*2.7+m*5.1,3)*24)%6;
+force*=[.5,.5,.1,1.5,.8,.8][kt]||1;G.force=force;
+
+var dh=H(t*.9+m*1.7,3);
+var dm=dh>.45?.7:dh>.25?.4998:.3;
+G.dir=dh>.45?'UP':dh>.25?'TRVL':'DN';
+
+var b=gB(mid),dir=G.possession==0?1:-1;
+var step=H(t*3.3+m*7,4)*.06*dm;
+var px=G.bx,pz=G.bz;
+G.bx+=b.x*step*dir;G.bz+=b.z*step;
+G.bx=Math.max(0,Math.min(1,G.bx));G.bz=Math.max(0,Math.min(1,G.bz));
+
+var dx=(G.bx-px)*105,dz=(G.bz-pz)*68;
+G.dist+=Math.sqrt(dx*dx+dz*dz);
+
+G.by=(mid==8||mid==12||mid==13||mid==29||mid==31)?1:0;
+
+if(G.bx>.97&&mid>=19&&mid<=24&&Math.abs(G.bz-.5)<.11){
+var gc=H(t*5+m*20,7);if(gc>.4){
+if(G.possession==0)G.hg++;else G.ag++;
+addLog(Math.floor(G.min)+"' GOAL! "+(G.possession==0?G.hn:G.an),'goal');
+G.bx=.5;G.bz=.5}}
+if(G.bx<.03&&mid>=19&&mid<=24&&Math.abs(G.bz-.5)<.11){
+var gc=H(t*5+m*20+100,7);if(gc>.4){
+if(G.possession==1)G.ag++;else G.hg++;
+addLog(Math.floor(G.min)+"' GOAL! "+(G.possession==1?G.an:G.hn),'goal');
+G.bx=.5;G.bz=.5}}
+
+if(G.bz<.05||G.bz>.95)G.bz=G.bz<.05?.08:.92;
+
+for(var i=0;i<11;i++){
+var hh=H(t*.3+i*7.7+m*.1,3),ha=H(t*.3+i*7.7+m*.1+500,3);
+G.hp[i].tx=Math.max(.02,Math.min(.98,G.bx*.3+(i-5)*.076+(hh-.4)*.14));
+G.hp[i].tz=Math.max(.04,Math.min(.96,G.bz*.4+(hh-.4)*.36));
+G.ap[i].tx=Math.max(.02,Math.min(.98,G.bx*.3-(i-5)*.076+(ha-.4)*.14+.5));
+G.ap[i].tz=Math.max(.04,Math.min(.96,G.bz*.4+(ha-.4)*.36));
+}}
+
+function addLog(txt,cls){
+var el=document.getElementById('log');
+el.innerHTML='<span class="'+(cls||'ev')+'">'+txt+'</span><br>'+el.innerHTML;
+if(el.children.length>20)el.removeChild(el.lastChild)}
+
+function render(){
+var v=VIEWS[G.vi],fw=fieldEl.offsetWidth,fh=fieldEl.offsetHeight;
+var ox=v.x,oy=v.y,sx=1/v.w,sy=1/v.h;
+
+// Ball
+var bpx=((G.bx-ox)*sx)*100,bpy=((G.bz-oy)*sy)*100;
+ballDot.style.left=Math.max(-3,Math.min(100,bpx))+'%';
+ballDot.style.top=Math.max(-3,Math.min(100,bpy))+'%';
+ballDot.classList.toggle('air',G.by>0);
+
+// Players
+for(var i=0;i<11;i++){
+var hp=G.hp[i],ap=G.ap[i];
+hp.x+=(hp.tx-hp.x)*.08;hp.z+=(hp.tz-hp.z)*.08;
+ap.x+=(ap.tx-ap.x)*.08;ap.z+=(ap.tz-ap.z)*.08;
+
+var hpx=((hp.x-ox)*sx)*100,hpy=((hp.z-oy)*sy)*100;
+dots[i].style.left=Math.max(-4,Math.min(102,hpx))+'%';
+dots[i].style.top=Math.max(-4,Math.min(102,hpy))+'%';
+dots[i].style.display=(hpx<-3||hpx>103||hpy<-3||hpy>103)?'none':'';
+
+var apx=((ap.x-ox)*sx)*100,apy=((ap.z-oy)*sy)*100;
+dots[11+i].style.left=Math.max(-4,Math.min(102,apx))+'%';
+dots[11+i].style.top=Math.max(-4,Math.min(102,apy))+'%';
+dots[11+i].style.display=(apx<-3||apx>103||apy<-3||apy>103)?'none':'';
+}
+
+// UI
+document.getElementById('sHome').textContent=G.hg;
+document.getElementById('sAway').textContent=G.ag;
+var mn=Math.floor(G.min),sc=Math.floor((G.min%1)*60);
+document.getElementById('clock').textContent=(mn<10?'0':'')+mn+':'+(sc<10?'0':'')+sc;
+document.getElementById('mMove').textContent=MN[G.mid]||'—';
+document.getElementById('mForce').textContent=G.force.toExponential(2);
+document.getElementById('mDir').textContent=G.dir;
+document.getElementById('mDist').textContent=Math.floor(G.dist);
+document.getElementById('mTick').textContent=G.tick;
+}
+
+function init(){
+fieldEl=document.getElementById('field');
+
+// Create dots
+for(var i=0;i<11;i++){
+var hd=document.createElement('div');hd.className='dot home';fieldEl.appendChild(hd);dots.push(hd);
+G.hp.push({x:.2+i*.05,z:.15+Math.floor(i/4)*.25,tx:.5,tz:.5});
+}
+for(var i=0;i<11;i++){
+var ad=document.createElement('div');ad.className='dot away';fieldEl.appendChild(ad);dots.push(ad);
+G.ap.push({x:.6+i*.03,z:.15+Math.floor(i/4)*.25,tx:.5,tz:.5});
+}
+ballDot=document.createElement('div');ballDot.className='dot ball';fieldEl.appendChild(ballDot);
+
+// Continent tabs
+var ct=document.getElementById('contTabs');
+CONT.forEach(function(c,ci){
+var b=document.createElement('span');b.className='tab'+(ci==0?' on':'');b.textContent=c.n;
+b.onclick=function(){
+document.querySelectorAll('#contTabs .tab').forEach(function(t){t.classList.remove('on')});
+b.classList.add('on');G.ci=ci;buildMatches(ci)};
+ct.appendChild(b)});
+
+buildMatches(0);
+
+// View tabs
+var vt=document.getElementById('viewTabs');
+VIEWS.forEach(function(v,vi){
+var b=document.createElement('span');b.className='vtab'+(vi==0?' on':'');b.textContent=v.n;
+b.onclick=function(){
+document.querySelectorAll('.vtab').forEach(function(t){t.classList.remove('on')});
+b.classList.add('on');G.vi=vi};
+vt.appendChild(b)});
+
+setInterval(tick,500);
+setInterval(render,50);
+}
+
+function buildMatches(ci){
+var mt=document.getElementById('matchTabs');mt.innerHTML='';
+CONT[ci].m.forEach(function(m,mi){
+var b=document.createElement('span');b.className='tab';b.textContent=m.h+' v '+m.a;
+b.onclick=function(){
+document.querySelectorAll('#matchTabs .tab').forEach(function(t){t.classList.remove('on')});
+b.classList.add('on');startMatch(ci,mi)};
+mt.appendChild(b)})}
+
+function startMatch(ci,mi){
+var m=CONT[ci].m[mi];G.run=false;G.tick=0;G.min=0;G.hg=0;G.ag=0;
+G.bx=.5;G.bz=.5;G.by=0;G.dist=0;G.half=false;
+G.hn=m.h;G.an=m.a;
+document.getElementById('tHome').textContent=m.h;
+document.getElementById('tAway').textContent=m.a;
+document.getElementById('log').innerHTML='';
+addLog('KICK OFF — '+m.h+' v '+m.a,'ev');
+setTimeout(function(){G.run=true},500);
+}
+
+init();
+</script>
+</body>
+</html>
