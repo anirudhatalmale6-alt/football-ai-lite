@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>AI3Football — Lite</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2d6a34">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="AI3Football">
 <style>
 :root{
 --ink:#1a1a1a;--paper:#fafaf8;--line:#c8d4c0;--pitch:#e8efe4;--pitch2:#f0f5ec;
@@ -347,6 +352,7 @@ setTimeout(function(){G.run=true},500);
 }
 
 init();
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}
 </script>
 </body>
 </html>

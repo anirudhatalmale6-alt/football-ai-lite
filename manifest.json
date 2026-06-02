@@ -1,0 +1,12 @@
+{
+  "name": "AI3Football Lite",
+  "short_name": "AI3Football",
+  "description": "AI3Football - Lightweight football simulation powered by NetSwitch",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#fafaf8",
+  "theme_color": "#2d6a34",
+  "icons": [
+    {"src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%232d6a34'/><text x='50' y='58' text-anchor='middle' fill='white' font-size='24' font-family='sans-serif' font-weight='bold'>A3F</text></svg>", "sizes": "any", "type": "image/svg+xml"}
+  ]
+}
